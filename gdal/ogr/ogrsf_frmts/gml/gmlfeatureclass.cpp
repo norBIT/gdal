@@ -175,9 +175,9 @@ int GMLFeatureClass::AddProperty( GMLPropertyDefn *poDefn )
     if( GetProperty(poDefn->GetName()) != NULL )
     {
         CPLError(CE_Warning, CPLE_AppDefined,
-                 "Field with same name (%s) already exists. "
+                 "Field with same name (%s) already exists in (%s). "
                  "Skipping newer ones",
-                 poDefn->GetName());
+                 poDefn->GetName(), m_pszName);
         return -1;
     }
 
@@ -212,7 +212,7 @@ int GMLFeatureClass::GetGeometryPropertyIndexBySrcElement(
 
 {
     for( int i = 0; i < m_nGeometryPropertyCount; i++ )
-        if( strcmp(pszElement, m_papoGeometryProperty[i]->GetSrcElement()) == 0)
+        if( EQUAL(pszElement, m_papoGeometryProperty[i]->GetSrcElement()) )
             return i;
 
     return -1;
@@ -225,12 +225,28 @@ int GMLFeatureClass::GetGeometryPropertyIndexBySrcElement(
 int GMLFeatureClass::AddGeometryProperty( GMLGeometryPropertyDefn *poDefn )
 
 {
-    if( GetGeometryPropertyIndexBySrcElement(poDefn->GetSrcElement()) >= 0 )
+    if( EQUAL( poDefn->GetSrcElement(), "" ) && !EQUAL( poDefn->GetName(), "") )
+    {
+        for( int i = 0; i < m_nGeometryPropertyCount; i++ )
+        {
+            if( EQUAL(poDefn->GetName(),  m_papoGeometryProperty[i]->GetName() ) )
+            {
+                CPLError(CE_Warning, CPLE_AppDefined,
+                         "Geometry field with same name (%s) already exists in (%s). "
+                         "Skipping newer ones",
+                         poDefn->GetName(),
+                         m_pszName);
+                return -1;
+            }
+       }
+    }
+    else if( GetGeometryPropertyIndexBySrcElement(poDefn->GetSrcElement()) >= 0 )
     {
         CPLError(CE_Warning, CPLE_AppDefined,
-                 "Field with same name (%s) already exists. "
+                 "Geometry field with same name (%s) already exists in (%s). "
                  "Skipping newer ones",
-                 poDefn->GetSrcElement());
+                 poDefn->GetSrcElement(),
+                 m_pszName);
         return -1;
     }
 
@@ -724,8 +740,8 @@ bool GMLFeatureClass::InitializeFromXML( CPLXMLNode *psRoot )
             else
             {
                 CPLError(CE_Failure, CPLE_AppDefined,
-                         "Unrecognized property type %s.",
-                         pszType);
+                         "Unrecognized property type %s in %s.",
+                         pszType, pszName);
                 delete poPDefn;
                 return false;
             }

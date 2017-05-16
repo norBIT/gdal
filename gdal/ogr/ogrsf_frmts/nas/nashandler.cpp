@@ -140,22 +140,9 @@ void NASHandler::startElement( const XMLCh* const /* uri */,
 
     transcode( localname, m_osElementName );
 
-    if ( ( m_bIgnoreFeature && m_nDepth >= m_nDepthFeature ) ||
-         ( m_osIgnoredElement != "" && m_nDepth >= m_nDepthElement ) )
+    if ( m_bIgnoreFeature && m_nDepth >= m_nDepthFeature )
     {
         m_nDepth ++;
-        return;
-    }
-
-    // ignore attributes of external references and "objektkoordinaten"
-    // (see PostNAS #3 and #15)
-    if (m_osElementName == "zeigtAufExternes" ||
-        m_osElementName== "objektkoordinaten" )
-    {
-        m_osIgnoredElement = m_osElementName;
-        m_nDepthElement    = m_nDepth;
-        m_nDepth ++;
-
         return;
     }
 
@@ -289,8 +276,8 @@ void NASHandler::startElement( const XMLCh* const /* uri */,
 
         if( EQUAL( pszLast, "Replace" ) )
         {
-            //CPLAssert( m_osLastReplacingFID != "" );
-            //CPLAssert( m_osLastSafeToIgnore != "" );
+            // CPLAssert( m_osLastReplacingFID != "" );
+            // CPLAssert( m_osLastSafeToIgnore != "" );
             m_poReader->SetFeaturePropertyDirectly(
                 "replacedBy", CPLStrdup(m_osLastReplacingFID) );
             m_poReader->SetFeaturePropertyDirectly(
@@ -490,16 +477,6 @@ void NASHandler::endElement( const XMLCh* const /* uri */ ,
         {
             m_bIgnoreFeature = false;
             m_nDepthFeature = 0;
-        }
-        return;
-    }
-
-    if ( m_osIgnoredElement != "" && m_nDepth >= m_nDepthElement )
-    {
-        if ( m_nDepth == m_nDepthElement )
-        {
-            m_osIgnoredElement = "";
-            m_nDepthElement    = 0;
         }
         return;
     }

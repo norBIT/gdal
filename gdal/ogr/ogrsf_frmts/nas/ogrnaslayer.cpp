@@ -47,7 +47,7 @@ OGRNASLayer::OGRNASLayer( const char * pszName,
         pszName + (STARTS_WITH_CI(pszName, "ogr:") ? 4 : 0))),
     iNextNASId(0),
     poDS(poDSIn),
-    // Readers should get the corresponding NASFeatureClass and cache it.
+    // Readers should get the corresponding GMLFeatureClass and cache it.
     poFClass(poDS->GetReader()->GetClass( pszName ))
 {
     SetDescription( poFeatureDefn->GetName() );
