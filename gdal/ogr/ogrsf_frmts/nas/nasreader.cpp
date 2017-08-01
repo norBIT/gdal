@@ -308,6 +308,35 @@ void NASReader::PushFeature( const char *pszElement,
 
         GMLFeatureClass *poNewClass = new GMLFeatureClass( pszElement );
 
+        if( EQUAL( pszElement, "Delete" ) )
+        {
+            struct {
+                const char *pszName;
+                GMLPropertyType eType;
+                int width;
+            } types[] = {
+                { "typeName", GMLPT_String, -1 },
+                { "FeatureId", GMLPT_String, -1 },
+                { "context", GMLPT_String, -1 },
+                { "safeToIgnore", GMLPT_String, -1 },
+                { "replacedBy", GMLPT_String, -1 },
+                { "anlass", GMLPT_StringList, -1 },
+                { "endet", GMLPT_String, 20 },
+                { "ignored", GMLPT_String, -1 },
+            };
+
+            for( unsigned int i = 0; i < sizeof(types)/sizeof(*types); i++ )
+            {
+                GMLPropertyDefn *poPDefn = new GMLPropertyDefn(types[i].pszName, types[i].pszName);
+
+                poPDefn->SetType(types[i].eType);
+                if( types[i].width > 0 )
+                    poPDefn->SetWidth(types[i].width);
+
+                poNewClass->AddProperty(poPDefn);
+            }
+        }
+
         iClass = AddClass( poNewClass );
     }
 
@@ -842,8 +871,8 @@ bool NASReader::PrescanForSchema( bool bGetExtents,
 
                 // Merge SRSName into layer.
                 const char* pszSRSName = GML_ExtractSrsNameFromGeometry(papsGeometry, osWork, false);
-		// if (pszSRSName != NULL)
-		//     m_bCanUseGlobalSRSName = FALSE;
+                // if (pszSRSName != NULL)
+                //     m_bCanUseGlobalSRSName = FALSE;
                 poClass->MergeSRSName(pszSRSName);
 
                 // Merge geometry type into layer.
@@ -900,8 +929,8 @@ bool NASReader::PrescanForSchema( bool bGetExtents,
     {
         if( m_papoClass[i]->GetFeatureCount() > 0 )
         {
-	    m_papoClass[j++] = m_papoClass[i];
-	    continue;
+            m_papoClass[j++] = m_papoClass[i];
+            continue;
         }
 
         CPLDebug("NAS",
