@@ -65,6 +65,7 @@ class NASHandler : public DefaultHandler
     int        m_nGeomLen;
 
     int        m_nGeometryDepth;
+    int        m_nGeometryPropertyIndex;
     bool       IsGeometryElement( const char * );
 
     int        m_nDepth;

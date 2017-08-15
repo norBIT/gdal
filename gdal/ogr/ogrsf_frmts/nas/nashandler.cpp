@@ -85,6 +85,7 @@ NASHandler::NASHandler( NASReader *poReader ) :
     m_nGeomAlloc(0),
     m_nGeomLen(0),
     m_nGeometryDepth(0),
+    m_nGeometryPropertyIndex(-1),
     m_nDepth(0),
     m_nDepthFeature(0),
     m_bIgnoreFeature(false),
@@ -178,6 +179,12 @@ void NASHandler::startElement( const XMLCh* const /* uri */,
     if( m_pszGeometry != NULL
         || IsGeometryElement( m_osElementName ) )
     {
+        if( m_nGeometryPropertyIndex == -1 )
+        {
+          GMLFeatureClass* poClass = poState->m_poFeature->GetClass();
+          m_nGeometryPropertyIndex = poClass->GetGeometryPropertyIndexBySrcElement( poState->osPath.c_str() );
+        }
+
         const int nLNLen = static_cast<int>(m_osElementName.size());
         CPLString osAttributes = GetAttributes( &attrs );
 
@@ -625,7 +632,10 @@ void NASHandler::endElement( const XMLCh* const /* uri */ ,
 #endif
                     }
 
-                    poState->m_poFeature->SetGeometryDirectly( psNode );
+                    if( m_nGeometryPropertyIndex >= 0 )
+                        poState->m_poFeature->SetGeometryDirectly( m_nGeometryPropertyIndex, psNode );
+                    else
+                        CPLError( CE_Warning, CPLE_AppDefined, "NAS: Unexpected geometry skipped (%s: %s)", poState->osPath.c_str(), m_pszGeometry);
                 }
                 else
                     CPLError( CE_Warning, CPLE_AppDefined, "NAS: Invalid geometry skipped" );
@@ -636,6 +646,7 @@ void NASHandler::endElement( const XMLCh* const /* uri */ ,
             CPLFree( m_pszGeometry );
             m_pszGeometry = NULL;
             m_nGeomAlloc = m_nGeomLen = 0;
+            m_nGeometryPropertyIndex = -1;
         }
     }
 

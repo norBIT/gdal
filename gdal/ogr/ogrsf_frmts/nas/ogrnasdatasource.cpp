@@ -276,8 +276,7 @@ OGRNASLayer *OGRNASDataSource::TranslateNASSchema( GMLFeatureClass *poClass )
 /*      Create an empty layer.                                          */
 /* -------------------------------------------------------------------- */
     OGRNASLayer *poLayer =
-        new OGRNASLayer( poClass->GetName(), poSRS, eGType, this );
-    delete poSRS;
+        new OGRNASLayer( poClass->GetName(), this );
 
 /* -------------------------------------------------------------------- */
 /*      Added attributes (properties).                                  */
@@ -312,6 +311,27 @@ OGRNASLayer *OGRNASDataSource::TranslateNASSchema( GMLFeatureClass *poClass )
 
         poLayer->GetLayerDefn()->AddFieldDefn( &oField );
     }
+
+    for (int iField = 0;
+      iField < poClass->GetGeometryPropertyCount();
+      iField++)
+    {
+        GMLGeometryPropertyDefn *poProperty =
+                poClass->GetGeometryProperty(iField);
+        OGRGeomFieldDefn oField(poProperty->GetName(),
+                        (OGRwkbGeometryType)poProperty->GetType());
+        if (poClass->GetGeometryPropertyCount() == 1 &&
+            poClass->GetFeatureCount() == 0)
+        {
+                    oField.SetType(wkbUnknown);
+        }
+
+        oField.SetSpatialRef(poSRS);
+        oField.SetNullable(poProperty->IsNullable());
+        poLayer->GetLayerDefn()->AddGeomFieldDefn(&oField);
+    }
+
+    delete poSRS;
 
     return poLayer;
 }

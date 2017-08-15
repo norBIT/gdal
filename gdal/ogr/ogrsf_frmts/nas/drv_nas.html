@@ -23,7 +23,9 @@ determine if a input is a NAS file and ignores all files without any matches.</p
 remap or ignore some elements and attributes internally to avoid attribute
 conflicts (e.g. <i>zeigtAufExternes</i>).  Instead it now takes the
 <b>NAS_GFS_TEMPLATE</b> option, that makes it possible to cleanly map element
-paths to feature attributes using a GFS file like in the GML driver.
+paths to feature attributes using a GFS file like in the GML driver.  Multiple
+geometries per layer are also possible (eg.  ax_flurstueck.objektkoordinaten
+next to the regular wkb_geometry).
 
 <p>A <a href="https://github.com/norBIT/alkisimport/blob/master/alkis-schema.gfs">GFS template</a> and
 a corresponding <a href="https://github.com/norBIT/alkisimport/blob/master/alkis-schema.sql">PostgreSQL schema</a>
