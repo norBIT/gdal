@@ -312,6 +312,9 @@ OGRNASLayer *OGRNASDataSource::TranslateNASSchema( GMLFeatureClass *poClass )
         poLayer->GetLayerDefn()->AddFieldDefn( &oField );
     }
 
+    if(poSRS)
+        poSRS->Reference();
+
     for (int iField = 0;
       iField < poClass->GetGeometryPropertyCount();
       iField++)
@@ -331,7 +334,8 @@ OGRNASLayer *OGRNASDataSource::TranslateNASSchema( GMLFeatureClass *poClass )
         poLayer->GetLayerDefn()->AddGeomFieldDefn(&oField);
     }
 
-    delete poSRS;
+    if( poSRS )
+        poSRS->Dereference();
 
     return poLayer;
 }

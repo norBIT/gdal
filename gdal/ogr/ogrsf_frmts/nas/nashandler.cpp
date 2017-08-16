@@ -635,8 +635,19 @@ void NASHandler::endElement( const XMLCh* const /* uri */ ,
 
                     if( m_nGeometryPropertyIndex >= 0 )
                         poState->m_poFeature->SetGeometryDirectly( m_nGeometryPropertyIndex, psNode );
+
+                    // no geometry property or property without element path
+                    else if( poState->m_poFeature->GetClass()->GetGeometryPropertyCount() == 0 ||
+                             ( poState->m_poFeature->GetClass()->GetGeometryPropertyCount() == 1 &&
+                               poState->m_poFeature->GetClass()->GetGeometryProperty(0)->GetSrcElement() &&
+                               *poState->m_poFeature->GetClass()->GetGeometryProperty(0)->GetSrcElement() == 0 ) )
+                        poState->m_poFeature->SetGeometryDirectly( psNode );
+
                     else
-                        CPLError( CE_Warning, CPLE_AppDefined, "NAS: Unexpected geometry skipped (%s: %s)", poState->osPath.c_str(), m_pszGeometry);
+                        CPLError( CE_Warning, CPLE_AppDefined, "NAS: Unexpected geometry skipped (class:%s path:%s geom:%s)",
+                                  poState->m_poFeature->GetClass()->GetName(),
+                                  poState->osPath.c_str(),
+                                  m_pszGeometry );
                 }
                 else
                     CPLError( CE_Warning, CPLE_AppDefined, "NAS: Invalid geometry skipped" );
