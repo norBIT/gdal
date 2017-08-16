@@ -611,13 +611,14 @@ void NASHandler::endElement( const XMLCh* const /* uri */ ,
                         CPLSetXMLValue( psNode, "pos", CPLSPrintf("0 0 %s", pszPos) );
                     }
 
-                    if ( poState->m_poFeature->GetGeometryList() &&
-                         poState->m_poFeature->GetGeometryList()[0] )
+                    if ( m_nGeometryPropertyIndex >= 0 &&
+                         m_nGeometryPropertyIndex < poState->m_poFeature->GetGeometryCount() &&
+                         poState->m_poFeature->GetGeometryList()[m_nGeometryPropertyIndex] )
                     {
                         int iId = poState->m_poFeature->GetClass()->GetPropertyIndex( "gml_id" );
                         const GMLProperty *poIdProp = poState->m_poFeature->GetProperty(iId);
 #ifdef DEBUG_VERBOSE
-                        char *pszOldGeom = CPLSerializeXMLTree( poState->m_poFeature->GetGeometryList()[0] );
+                        char *pszOldGeom = CPLSerializeXMLTree( poState->m_poFeature->GetGeometryList()[m_nGeometryPropertyIndex] );
 
                         CPLDebug("NAS", "Overwriting other geometry (%s; replace:%s; with:%s)",
                                  poIdProp && poIdProp->nSubProperties>0 && poIdProp->papszSubProperties[0] ? poIdProp->papszSubProperties[0] : "(null)",
