@@ -212,7 +212,7 @@ int GMLFeatureClass::GetGeometryPropertyIndexBySrcElement(
 
 {
     for( int i = 0; i < m_nGeometryPropertyCount; i++ )
-        if( EQUAL(pszElement, m_papoGeometryProperty[i]->GetSrcElement()) )
+        if( strcmp(pszElement, m_papoGeometryProperty[i]->GetSrcElement()) == 0 )
             return i;
 
     return -1;
@@ -225,28 +225,12 @@ int GMLFeatureClass::GetGeometryPropertyIndexBySrcElement(
 int GMLFeatureClass::AddGeometryProperty( GMLGeometryPropertyDefn *poDefn )
 
 {
-    if( EQUAL( poDefn->GetSrcElement(), "" ) && !EQUAL( poDefn->GetName(), "") )
-    {
-        for( int i = 0; i < m_nGeometryPropertyCount; i++ )
-        {
-            if( EQUAL(poDefn->GetName(),  m_papoGeometryProperty[i]->GetName() ) )
-            {
-                CPLError(CE_Warning, CPLE_AppDefined,
-                         "Geometry field with same name (%s) already exists in (%s). "
-                         "Skipping newer ones",
-                         poDefn->GetName(),
-                         m_pszName);
-                return -1;
-            }
-       }
-    }
-    else if( GetGeometryPropertyIndexBySrcElement(poDefn->GetSrcElement()) >= 0 )
+    if( GetGeometryPropertyIndexBySrcElement(poDefn->GetSrcElement()) >= 0 )
     {
         CPLError(CE_Warning, CPLE_AppDefined,
                  "Geometry field with same name (%s) already exists in (%s). "
                  "Skipping newer ones",
-                 poDefn->GetSrcElement(),
-                 m_pszName);
+                 poDefn->GetSrcElement(), m_pszName);
         return -1;
     }
 
@@ -740,7 +724,7 @@ bool GMLFeatureClass::InitializeFromXML( CPLXMLNode *psRoot )
             else
             {
                 CPLError(CE_Failure, CPLE_AppDefined,
-                         "Unrecognized property type %s in %s.",
+                         "Unrecognized property type (%s) in (%s).",
                          pszType, pszName);
                 delete poPDefn;
                 return false;

@@ -310,7 +310,7 @@ void NASReader::PushFeature( const char *pszElement,
 
         if( EQUAL( pszElement, "Delete" ) )
         {
-            struct {
+            const struct {
                 const char *pszName;
                 GMLPropertyType eType;
                 int width;
@@ -325,7 +325,7 @@ void NASReader::PushFeature( const char *pszElement,
                 { "ignored", GMLPT_String, -1 },
             };
 
-            for( unsigned int i = 0; i < sizeof(types)/sizeof(*types); i++ )
+            for( unsigned int i = 0; i < CPL_ARRAYSIZE(types); i++ )
             {
                 GMLPropertyDefn *poPDefn = new GMLPropertyDefn(types[i].pszName, types[i].pszName);
 
