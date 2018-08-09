@@ -1197,12 +1197,18 @@ GBool PostGISRasterDataset::LoadSources(int nXOff, int nYOff, int nXSize, int nY
         CPLTestBool(CPLGetConfigOption("PR_FORCE_LOAD_RASTERS", "FALSE"));
     bool bAllBandCaching = false;
 
+    CPLString osPrimaryKeyNameI, osSchemaI, osTableI, osColumnI;
+    osPrimaryKeyNameI.Seize(CPLEscapeString(pszPrimaryKeyName, -1, CPLES_SQLI));
+    osSchemaI.Seize(CPLEscapeString(pszSchema, -1, CPLES_SQLI));
+    osTableI.Seize(CPLEscapeString(pszTable, -1, CPLES_SQLI));
+    osColumnI.Seize(CPLEscapeString(pszColumn, -1, CPLES_SQLI));
+
     PGresult *poResult = nullptr;
     if( m_nTiles > 0 && !bFetchAll )
     {
         CPLString osCommand;
         osCommand.Printf("SELECT %s FROM %s.%s",
-                        pszPrimaryKeyName, pszSchema, pszTable);
+                        osPrimaryKeyNameI.c_str(), osSchemaI.c_str(), osTableI.c_str());
         osCommand += " WHERE ";
         osCommand += osSpatialFilter;
 
@@ -1279,7 +1285,7 @@ GBool PostGISRasterDataset::LoadSources(int nXOff, int nYOff, int nXSize, int nY
         CPLString osWHERE;
         if( !osIDsToFetch.empty() )
         {
-            osWHERE += pszPrimaryKeyName;
+            osWHERE += osPrimaryKeyNameI;
             osWHERE += " IN (";
             osWHERE += osIDsToFetch;
             osWHERE += ")";
@@ -1308,17 +1314,17 @@ GBool PostGISRasterDataset::LoadSources(int nXOff, int nYOff, int nXSize, int nY
 
         CPLString osCommand;
         osCommand.Printf("SELECT %s, ST_Metadata(%s)",
-                         pszPrimaryKeyName, pszColumn);
+                         osPrimaryKeyNameI.c_str(), osColumnI.c_str());
         if( bLoadRasters )
         {
             CPLString orRasterToFetch;
             if( bAllBandCaching )
             {
-                orRasterToFetch = pszColumn;
+                orRasterToFetch = osColumnI;
             }
             else
             {
-                orRasterToFetch.Printf("ST_Band(%s, %d)", pszColumn, nBand);
+                orRasterToFetch.Printf("ST_Band(%s, %d)", osColumnI.c_str(), nBand);
             }
             if( eOutDBResolution == OutDBResolution::SERVER_SIDE ||
                 !bCanUseClientSide )
@@ -1328,7 +1334,7 @@ GBool PostGISRasterDataset::LoadSources(int nXOff, int nYOff, int nXSize, int nY
             osCommand += ", " + orRasterToFetch;
         }
         osCommand += CPLSPrintf(" FROM %s.%s",
-                                pszSchema, pszTable);
+                                osSchemaI.c_str(), osTableI.c_str());
         if( !osWHERE.empty() )
         {
             osCommand += " WHERE ";
@@ -1416,7 +1422,11 @@ bool PostGISRasterDataset::CanUseClientSideOutDB(bool bAllBandCaching,
                                                  int nBand,
                                                  const CPLString& osWHERE)
 {
-    CPLString osCommand;
+    CPLString osCommand, osSchemaI, osTableI, osColumnI;
+    osSchemaI.Seize(CPLEscapeString(pszSchema, -1, CPLES_SQLI));
+    osTableI.Seize(CPLEscapeString(pszTable, -1, CPLES_SQLI));
+    osColumnI.Seize(CPLEscapeString(pszColumn, -1, CPLES_SQLI));
+
     if (bAllBandCaching)
     {
         if( bHasStBandFileSize )
@@ -1425,10 +1435,10 @@ bool PostGISRasterDataset::CanUseClientSideOutDB(bool bAllBandCaching,
                 "SELECT DISTINCT ST_BandPath(%s,band), "
                 "ST_BandFileSize(%s,band), ST_BandFileTimeStamp(%s,band) FROM "
                 "(SELECT %s, generate_series(1, ST_NumBands(%s)) band FROM %s.%s%s) foo",
-                pszColumn,
-                pszColumn, pszColumn,
-                pszColumn, pszColumn,
-                pszSchema, pszTable,
+                osColumnI.c_str(),
+                osColumnI.c_str(), osColumnI.c_str(),
+                osColumnI.c_str(), osColumnI.c_str(),
+                osSchemaI.c_str(), osTableI.c_str(),
                 !osWHERE.empty() ? (" WHERE " + osWHERE).c_str(): "");
 
         }
@@ -1437,8 +1447,8 @@ bool PostGISRasterDataset::CanUseClientSideOutDB(bool bAllBandCaching,
             osCommand.Printf(
                 "SELECT DISTINCT ST_BandPath(%s,band) FROM "
                 "(SELECT %s, generate_series(1, ST_NumBands(%s)) band FROM %s.%s%s) foo",
-                pszColumn, pszColumn, pszColumn,
-                pszSchema, pszTable,
+                osColumnI.c_str(), osColumnI.c_str(), osColumnI.c_str(),
+                osSchemaI.c_str(), osTableI.c_str(),
                 !osWHERE.empty() ? (" WHERE " + osWHERE).c_str(): "");
         }
     }
@@ -1450,18 +1460,18 @@ bool PostGISRasterDataset::CanUseClientSideOutDB(bool bAllBandCaching,
                 "SELECT DISTINCT ST_BandPath(%s,%d), "
                 "ST_BandFileSize(%s,%d), ST_BandFileTimeStamp(%s,%d) "
                 "FROM %s.%s%s",
-                pszColumn, nBand,
-                pszColumn, nBand,
-                pszColumn, nBand,
-                pszSchema, pszTable,
+                osColumnI.c_str(), nBand,
+                osColumnI.c_str(), nBand,
+                osColumnI.c_str(), nBand,
+                osSchemaI.c_str(), osTableI.c_str(),
                 !osWHERE.empty() ? (" WHERE " + osWHERE).c_str(): "");
         }
         else
         {
             osCommand.Printf(
                 "SELECT DISTINCT ST_BandPath(%s,%d) FROM %s.%s%s",
-                pszColumn, nBand,
-                pszSchema, pszTable,
+                osColumnI.c_str(), nBand,
+                osSchemaI.c_str(), osTableI.c_str(),
                 !osWHERE.empty() ? (" WHERE " + osWHERE).c_str(): "");
         }
     }
@@ -1535,16 +1545,20 @@ BandMetadata * PostGISRasterDataset::GetBandsMetadata(int * pnBands)
 {
     BandMetadata * poBMD = nullptr;
     PGresult * poResult = nullptr;
-    CPLString osCommand;
+    CPLString osCommand, osSchemaI, osTableI, osColumnI;
     char * pszRes = nullptr;
     char * pszFilteredRes = nullptr;
     char ** papszParams = nullptr;
 
+    osSchemaI.Seize(CPLEscapeString(pszSchema, -1, CPLES_SQLI));
+    osTableI.Seize(CPLEscapeString(pszTable, -1, CPLES_SQLI));
+    osColumnI.Seize(CPLEscapeString(pszColumn, -1, CPLES_SQLI));
+
     osCommand.Printf("select st_bandmetadata(%s, band) from "
       "(select %s, generate_series(1, %d) band from "
-      "(select %s from %s.%s where (%s) AND st_numbands(%s)=%d limit 1) bar) foo", pszColumn,
-      pszColumn, nBandsToCreate, pszColumn, pszSchema, pszTable, pszWhere ? pszWhere : "true",
-      pszColumn, nBandsToCreate);
+      "(select %s from %s.%s where (%s) AND st_numbands(%s)=%d limit 1) bar) foo", osColumnI.c_str(),
+      osColumnI.c_str(), nBandsToCreate, osColumnI.c_str(), osSchemaI.c_str(), osTableI.c_str(), pszWhere ? pszWhere : "true",
+      osColumnI.c_str(), nBandsToCreate);
 
 #ifdef DEBUG_QUERY
     CPLDebug("PostGIS_Raster",
@@ -2094,6 +2108,10 @@ const char * pszValidConnectionString)
     if( papszSubdatasets == nullptr )
         return false;
 
+    CPLString osColumnI, osPrimaryKeyNameI;
+    osColumnI.Seize(CPLEscapeString(pszColumn, -1, CPLES_SQLI));
+    osPrimaryKeyNameI.Seize(CPLEscapeString(pszPrimaryKeyName, -1, CPLES_SQLI));
+
     // Subdatasets identified by primary key
     if (GetPrimaryKeyRef() != nullptr) {
 
@@ -2104,12 +2122,12 @@ const char * pszValidConnectionString)
             papszSubdatasets[2 * i] =
                 CPLStrdup(CPLSPrintf("SUBDATASET_%d_NAME=PG:%s schema=%s table=%s column=%s "
                     "where='%s = %s'", i+ 1, pszValidConnectionString,
-                    pszSchema, pszTable, pszColumn, pszPrimaryKeyName,
+                    pszSchema, pszTable, pszColumn, osPrimaryKeyNameI.c_str(),
                     pszId));
 
             papszSubdatasets[2 * i + 1] =
                 CPLStrdup(CPLSPrintf("SUBDATASET_%d_DESC=PostGIS Raster at %s.%s (%s), with %s = %s",
-                    i + 1, pszSchema, pszTable, pszColumn, pszPrimaryKeyName,
+                    i + 1, pszSchema, pszTable, pszColumn, osPrimaryKeyNameI.c_str(),
                     pszId));
         }
     }
@@ -2140,9 +2158,10 @@ const char * pszValidConnectionString)
                 CPLStrdup(CPLSPrintf("SUBDATASET_%d_NAME=PG:%s schema=%s table=%s column=%s "
                     "where='abs(ST_UpperLeftX(%s) - %.8f) < 1e-8 AND "
                     "abs(ST_UpperLeftY(%s) - %.8f) < 1e-8'",
-                    i + 1, pszValidConnectionString, pszSchema, pszTable,
-                    pszColumn, pszColumn, dfTileUpperLeftX, pszColumn,
-                    dfTileUpperLeftY));
+                    i + 1, pszValidConnectionString,
+                    pszSchema, pszTable, pszColumn,
+                    osColumnI.c_str(), dfTileUpperLeftX,
+                    osColumnI.c_str(), dfTileUpperLeftY));
 
              papszSubdatasets[2 * i + 1] =
                 CPLStrdup(CPLSPrintf("SUBDATASET_%d_DESC=PostGIS Raster at %s.%s (%s), "
@@ -2194,9 +2213,14 @@ GBool PostGISRasterDataset::SetRasterProperties
     (const char * pszValidConnectionString)
 {
     PGresult* poResult = nullptr;
-    CPLString osCommand;
     GBool bDataFoundInRasterColumns = false;
     GBool bNeedToCheckWholeTable = false;
+
+    CPLString osCommand, osSchemaI, osTableI, osColumnI, osPrimaryKeyNameI;
+    osSchemaI.Seize(CPLEscapeString(pszSchema, -1, CPLES_SQLI));
+    osTableI.Seize(CPLEscapeString(pszTable, -1, CPLES_SQLI));
+    osColumnI.Seize(CPLEscapeString(pszColumn, -1, CPLES_SQLI));
+    osPrimaryKeyNameI.Seize(CPLEscapeString(pszPrimaryKeyName, -1, CPLES_SQLI));
 
     /*******************************************************************
      * Get the extent and the maximum number of bands of the requested
@@ -2213,9 +2237,9 @@ GBool PostGISRasterDataset::SetRasterProperties
             "ST_YMax(geom) as ymax, scale_x, scale_y from (select ST_SRID(%s) srid, "
             "ST_Extent(%s::geometry) geom, max(ST_NumBands(%s)) "
             "nbband, avg(ST_ScaleX(%s)) scale_x, avg(ST_ScaleY(%s)) scale_y from %s.%s where %s group by ST_SRID(%s)) foo",
-            pszColumn, pszColumn, pszColumn, pszColumn, pszColumn,
-            pszSchema, pszTable, pszWhere,
-            pszColumn);
+            osColumnI.c_str(), osColumnI.c_str(), osColumnI.c_str(), osColumnI.c_str(), osColumnI.c_str(),
+            osSchemaI.c_str(), osTableI.c_str(), pszWhere,
+            osColumnI.c_str());
 
 #ifdef DEBUG_QUERY
         CPLDebug("PostGIS_Raster",
@@ -2331,7 +2355,7 @@ GBool PostGISRasterDataset::SetRasterProperties
                 "st_ymax(geom) as ymax, scale_x, scale_y from (select st_srid(%s) srid, "
                 "st_extent(%s::geometry) geom, max(ST_NumBands(%s)) "
                 "nbband, avg(ST_ScaleX(%s)) scale_x, avg(ST_ScaleY(%s)) scale_y from %s.%s group by st_srid(%s)) foo",
-                pszColumn, pszColumn, pszColumn, pszColumn, pszColumn, pszSchema, pszTable, pszColumn);
+                osColumnI.c_str(), osColumnI.c_str(), osColumnI.c_str(), osColumnI.c_str(), osColumnI.c_str(), osSchemaI.c_str(), osTableI.c_str(), osColumnI.c_str());
 
 #ifdef DEBUG_QUERY
             CPLDebug("PostGIS_Raster",
@@ -2479,7 +2503,7 @@ GBool PostGISRasterDataset::SetRasterProperties
             {
                 osCommand.Printf("SELECT avg(scale_x) avg_scale_x, avg(scale_y) avg_scale_y FROM "
                                  "(SELECT ST_ScaleX(%s) scale_x, ST_ScaleY(%s) scale_y FROM %s.%s LIMIT 10) foo",
-                                 pszColumn, pszColumn, pszSchema, pszTable);
+                                 osColumnI.c_str(), osColumnI.c_str(), osSchemaI.c_str(), osTableI.c_str());
                 #ifdef DEBUG_QUERY
                     CPLDebug("PostGIS_Raster",
                         "PostGISRasterDataset::SetRasterProperties(): Query: %s",
@@ -2567,15 +2591,16 @@ GBool PostGISRasterDataset::SetRasterProperties
             }
 
             osCommand.Printf("select %s, st_metadata(%s) from %s.%s",
-                pszPrimaryKeyName, pszColumn, pszSchema, pszTable);
+                osPrimaryKeyNameI.c_str(), osColumnI.c_str(), osSchemaI.c_str(), osTableI.c_str());
 
             // srid should not be necessary. It was previously checked
         }
 
         else {
             osCommand.Printf("select %s, st_metadata(%s) from %s.%s "
-                "where %s", pszPrimaryKeyName, pszColumn, pszSchema,
-                pszTable, pszWhere);
+                "where %s", osPrimaryKeyNameI.c_str(), osColumnI.c_str(),
+                osSchemaI.c_str(), osTableI.c_str(),
+                pszWhere);
         }
     }
 
@@ -2583,12 +2608,12 @@ GBool PostGISRasterDataset::SetRasterProperties
     else {
         if (pszWhere == nullptr) {
             osCommand.Printf("select st_metadata(%s) from %s.%s",
-                pszColumn, pszSchema, pszTable);
+                osColumnI.c_str(), osSchemaI.c_str(), osTableI.c_str());
         }
 
         else {
-            osCommand.Printf("select st_metadata(%s) from %s.%s "
-                "where %s", pszColumn, pszSchema, pszTable, pszWhere);
+            osCommand.Printf("select st_metadata(%s) from %s.%s where %s",
+                osColumnI.c_str(), osSchemaI.c_str(), osTableI.c_str(), pszWhere);
         }
     }
 
@@ -3413,8 +3438,12 @@ PostGISRasterDataset::CreateCopy( CPL_UNUSED const char * pszFilename,
     char* pszConnectionString = nullptr;
     PGconn * poConn = nullptr;
     PGresult * poResult = nullptr;
-    CPLString osCommand;
     GBool bInsertSuccess;
+
+    CPLString osCommand, osSchemaI, osTableI, osColumnI;
+    osSchemaI.Seize(CPLEscapeString(pszSchema, -1, CPLES_SQLI));
+    osTableI.Seize(CPLEscapeString(pszTable, -1, CPLES_SQLI));
+    osColumnI.Seize(CPLEscapeString(pszColumn, -1, CPLES_SQLI));
 
     if( poGSrcDS->GetDriver() != GDALGetDriverByName("PostGISRaster") )
     {
@@ -3526,7 +3555,7 @@ PostGISRasterDataset::CreateCopy( CPL_UNUSED const char * pszFilename,
 
     osCommand.Printf("create index %s_%s_gist ON %s.%s USING gist "
         "(st_convexhull(%s));", pszTable, pszColumn,
-        pszSchema, pszTable, pszColumn);
+        osSchemaI.c_str(), osTableI.c_str(), osColumnI.c_str());
     poResult = PQexec(poConn, osCommand.c_str());
     if (
             poResult == nullptr ||
@@ -3701,18 +3730,25 @@ PostGISRasterDataset::InsertRaster(PGconn * poConn,
     PostGISRasterDataset * poSrcDS, const char *pszSchema,
     const char * pszTable, const char * pszColumn)
 {
-    CPLString osCommand;
+    CPLString osCommand, osSchemaI, osTableI, osColumnI, osSrcColumnI, osSrcSchemaI, osSrcTableI;
     PGresult * poResult = nullptr;
+
+    osSchemaI.Seize(CPLEscapeString(pszSchema, -1, CPLES_SQLI));
+    osTableI.Seize(CPLEscapeString(pszTable, -1, CPLES_SQLI));
+    osColumnI.Seize(CPLEscapeString(pszColumn, -1, CPLES_SQLI));
+    osSrcSchemaI.Seize(CPLEscapeString(poSrcDS->pszSchema, -1, CPLES_SQLI));
+    osSrcTableI.Seize(CPLEscapeString(poSrcDS->pszTable, -1, CPLES_SQLI));
+    osSrcColumnI.Seize(CPLEscapeString(poSrcDS->pszColumn, -1, CPLES_SQLI));
 
     if (poSrcDS->pszWhere == nullptr) {
         osCommand.Printf("insert into %s.%s (%s) (select %s from %s.%s)",
-            pszSchema, pszTable, pszColumn, poSrcDS->pszColumn,
-            poSrcDS->pszSchema, poSrcDS->pszTable);
+            osSchemaI.c_str(), osTableI.c_str(), osColumnI.c_str(),
+	    osSrcColumnI.c_str(), osSrcSchemaI.c_str(), osSrcTableI.c_str());
     }
     else {
         osCommand.Printf("insert into %s.%s (%s) (select %s from %s.%s where %s)",
-            pszSchema, pszTable, pszColumn, poSrcDS->pszColumn,
-            poSrcDS->pszSchema, poSrcDS->pszTable, poSrcDS->pszWhere);
+            osSchemaI.c_str(), osTableI.c_str(), osColumnI.c_str(),
+            osSrcColumnI.c_str(), osSrcSchemaI.c_str(), osSrcTableI.c_str(), poSrcDS->pszWhere);
     }
 
 #ifdef DEBUG_QUERY

@@ -108,9 +108,14 @@ CPLErr PostGISRasterTileRasterBand::IReadBlock(int /*nBlockXOff*/,
     const int nTileXSize = nBlockXSize;
     const int nTileYSize = nBlockYSize;
 
+    CPLString osColumnI, osTableI, osSchemaI;
+    osColumnI.Seize(CPLEscapeString(poRTDS->poRDS->pszColumn, -1, CPLES_SQLI));
+    osTableI.Seize(CPLEscapeString(poRTDS->poRDS->pszTable, -1, CPLES_SQLI));
+    osSchemaI.Seize(CPLEscapeString(poRTDS->poRDS->pszSchema, -1, CPLES_SQLI));
+
     CPLString osRasterToFetch;
     osRasterToFetch.Printf("ST_Band(%s, %d)",
-                           poRTDS->poRDS->pszColumn, nBand);
+                           osColumnI.c_str(), nBand);
     // We don't honour CLIENT_SIDE_IF_POSSIBLE since it would be likely too
     // costly in that context.
     if( poRTDS->poRDS->eOutDBResolution != OutDBResolution::CLIENT_SIDE )
@@ -119,22 +124,24 @@ CPLErr PostGISRasterTileRasterBand::IReadBlock(int /*nBlockXOff*/,
     }
 
     osCommand.Printf("SELECT %s FROM %s.%s WHERE ",
-        osRasterToFetch.c_str(), poRTDS->poRDS->pszSchema, poRTDS->poRDS->pszTable);
+        osRasterToFetch.c_str(), osSchemaI.c_str(), osTableI.c_str());
 
     // Get by PKID
     if (poRTDS->poRDS->pszPrimaryKeyName)
     {
+        CPLString osPrimaryKeyNameI;
+        osPrimaryKeyNameI.Seize(CPLEscapeString(poRTDS->poRDS->pszPrimaryKeyName, -1, CPLES_SQLI));
         osCommand += CPLSPrintf("%s = '%s'",
-                        poRTDS->poRDS->pszPrimaryKeyName, poRTDS->pszPKID);
+                        osPrimaryKeyNameI.c_str(), poRTDS->pszPKID);
     }
 
     // Get by upperleft
     else {
         osCommand += CPLSPrintf(
             "abs(ST_UpperLeftX(%s) - %.8f) < 1e-8 and abs(ST_UpperLeftY(%s) - %.8f) < 1e-8",
-            poRTDS->poRDS->pszColumn,
+            osColumnI.c_str(),
             dfTileUpperLeftX,
-            poRTDS->poRDS->pszColumn,
+            osColumnI.c_str(),
             dfTileUpperLeftY);
     }
 
